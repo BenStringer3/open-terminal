@@ -3,10 +3,6 @@ name: Build Homelab Image
 on:
   push:
     branches: [main]
-    paths:
-      - 'Dockerfile.homelab'
-      - 'open_terminal/**'
-      - 'pyproject.toml'
 
 env:
   IMAGE: ghcr.io/benstringer3/open-terminal:homelab
