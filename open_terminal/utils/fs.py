@@ -41,6 +41,10 @@ class UserFS:
     def resolve_path(self, path: str, cwd: str | None = None) -> str:
         """Resolve *path* to an absolute path relative to the user's home.
 
+        Tilde paths (``~``, ``~/…``) expand against ``self.home`` so file tools
+        match shell behaviour when ``HOME`` is set (e.g. ``HOME=/home/user`` in
+        Docker).  ``~otheruser/…`` falls back to :func:`os.path.expanduser`.
+
         Absolute paths are normalised in place.  Relative paths are joined
         to *cwd* (if provided) or ``self.home`` so that they resolve against
         the session's working directory rather than the server process's
@@ -50,6 +54,13 @@ class UserFS:
         default home) are automatically rewritten to the provisioned user's
         home directory, since LLMs often hardcode that path.
         """
+        if path.startswith("~"):
+            if path == "~":
+                path = self.home
+            elif path.startswith("~/"):
+                path = os.path.join(self.home, path[2:])
+            else:
+                path = os.path.expanduser(path)
         if os.path.isabs(path):
             # Swap /home/user (and /home/usr, a common LLM hallucination)
             # → user's actual home when multi-user is active
