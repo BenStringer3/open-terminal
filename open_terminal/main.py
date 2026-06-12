@@ -3,7 +3,6 @@ import hmac
 from importlib.metadata import version as _pkg_version
 import fnmatch
 import json
-
 import aiofiles
 import aiofiles.os
 import os
@@ -24,7 +23,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
-from open_terminal.env import API_KEY, BINARY_FILE_MIME_PREFIXES, CORS_ALLOWED_ORIGINS, ENABLE_NOTEBOOKS, ENABLE_SYSTEM_PROMPT, ENABLE_TERMINAL, EXECUTE_DESCRIPTION, EXECUTE_TIMEOUT, LOG_DIR, MAX_TERMINAL_SESSIONS, MULTI_USER, OPEN_TERMINAL_INFO, PROCESS_LOG_RETENTION, SESSION_CWD_TTL, SYSTEM_PROMPT, TERMINAL_TERM
+from open_terminal.env import API_KEY, BINARY_FILE_MIME_PREFIXES, CORS_ALLOWED_ORIGINS, ENABLE_NOTEBOOKS, ENABLE_SYSTEM_PROMPT, ENABLE_TERMINAL, EXECUTE_DESCRIPTION, EXECUTE_TIMEOUT, LOG_DIR, MAX_TERMINAL_SESSIONS, MULTI_USER, OPEN_TERMINAL_INFO, PROCESS_LOG_RETENTION, SESSION_CWD_TTL, SYSTEM_PROMPT, TERMINAL_TERM, runtime_username
 from open_terminal.utils.runner import PipeRunner, ProcessRunner, create_runner
 from open_terminal.utils.fs import UserFS
 
@@ -55,7 +54,7 @@ except ImportError:
 def get_system_info() -> str:
     """Gather runtime system metadata for the OpenAPI description."""
     shell = os.environ.get("SHELL", "/bin/sh")
-    user_part = f" as user '{os.getenv('USER', 'unknown')}'" if not MULTI_USER else ""
+    user_part = f" as user '{runtime_username()}'" if not MULTI_USER else ""
     return (
         f"This system is running {platform.system()} {platform.release()} ({platform.machine()}) "
         f"on {socket.gethostname()}{user_part} with {shell}. "
@@ -69,7 +68,7 @@ def get_system_prompt() -> str:
         return SYSTEM_PROMPT
 
     shell = os.environ.get("SHELL", "/bin/sh")
-    user_part = f" as user '{os.getenv('USER', 'unknown')}'" if not MULTI_USER else ""
+    user_part = f" as user '{runtime_username()}'" if not MULTI_USER else ""
 
     prompt = (
         f"You have access to a computer running {platform.system()} {platform.release()} ({platform.machine()}) "

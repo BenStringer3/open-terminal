@@ -18,4 +18,6 @@ COPY . /tmp/open-terminal-src
 RUN pip install --no-cache-dir '/tmp/open-terminal-src[mcp]' \
     && rm -rf /tmp/open-terminal-src
 
+# Compose may override uid; keep USER/HOME aligned so tool descriptions match paths.
+ENV USER=user HOME=/home/user
 USER user

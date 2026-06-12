@@ -1,6 +1,23 @@
 import os
+import pwd
 
 from open_terminal import config
+
+
+def runtime_username() -> str:
+    """Username for tool descriptions when ``USER`` is unset (common in Docker)."""
+    user = os.environ.get("USER", "").strip()
+    if user:
+        return user
+    home = os.environ.get("HOME", "").strip()
+    if home.startswith("/home/"):
+        name = home[len("/home/") :].split("/")[0]
+        if name:
+            return name
+    try:
+        return pwd.getpwuid(os.getuid()).pw_name
+    except (KeyError, OSError):
+        return "user"
 
 
 def _resolve_file_env(var: str, default: str = "") -> str:
