@@ -32,6 +32,10 @@ jobs:
             file: Dockerfile.alpine
             suffix: "-alpine"
             short_tag: "alpine"
+          - name: homelab
+            file: Dockerfile.homelab
+            suffix: "-homelab"
+            short_tag: "homelab"
     permissions:
       contents: read
       packages: write
@@ -97,6 +101,9 @@ jobs:
           - name: alpine
             suffix: "-alpine"
             short_tag: "alpine"
+          - name: homelab
+            suffix: "-homelab"
+            short_tag: "homelab"
     permissions:
       contents: read
       packages: write
