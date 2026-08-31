@@ -310,7 +310,9 @@ from open_terminal.utils.log import log_process, read_log
 def _cleanup_expired():
     """Remove finished processes that have expired.
 
-    Also deletes log files older than *LOG_RETENTION_SECONDS*.
+    Also deletes process log files older than *PROCESS_LOG_RETENTION* — both for
+    in-memory entries and orphaned files on disk (logs outlive the 5-minute
+    in-memory expiry, so a disk scan is required).
     """
     now = time.time()
     expired = [
@@ -320,17 +322,36 @@ def _cleanup_expired():
         and now - background_process.finished_at > _EXPIRY_SECONDS
     ]
     for process_id in expired:
-        bp = _processes.pop(process_id)
-        # Delete the log file if it has exceeded the retention period.
-        if (
-            bp.log_path
-            and bp.finished_at
-            and now - bp.finished_at > PROCESS_LOG_RETENTION
-        ):
+        _processes.pop(process_id)
+
+    _prune_stale_process_logs(now)
+
+
+def _prune_stale_process_logs(now: float | None = None) -> None:
+    """Delete process jsonl files older than PROCESS_LOG_RETENTION by mtime."""
+    now = time.time() if now is None else now
+    processes_dir = os.path.join(LOG_DIR, "processes")
+    try:
+        entries = os.listdir(processes_dir)
+    except OSError:
+        return
+    for name in entries:
+        if not name.endswith(".jsonl"):
+            continue
+        path = os.path.join(processes_dir, name)
+        try:
+            age = now - os.path.getmtime(path)
+        except OSError:
+            continue
+        if age > PROCESS_LOG_RETENTION:
             try:
-                os.remove(bp.log_path)
+                os.remove(path)
             except OSError:
                 pass
+
+
+# Prune orphans once at import / startup (container restart).
+_prune_stale_process_logs()
 
 
 def _get_process(process_id: str) -> BackgroundProcess:
@@ -831,12 +852,19 @@ async def grep_search(
         if os.path.isfile(target):
             _search_file(target)
         else:
+            log_processes = os.path.realpath(os.path.join(LOG_DIR, "processes"))
             for dirpath, dirnames, filenames in os.walk(target):
                 # Prune directories belonging to other users.
                 dirnames[:] = [
                     d for d in dirnames
                     if fs.is_path_allowed(os.path.join(dirpath, d))
                 ]
+                # Never scan process audit logs — they are huge, and agents that
+                # grep ~ accidentally OOM the container (homelab soft-lock 2026-08-31).
+                real_dir = os.path.realpath(dirpath)
+                if real_dir == log_processes or real_dir.startswith(log_processes + os.sep):
+                    dirnames[:] = []
+                    continue
                 if truncated:
                     break
                 for filename in sorted(filenames):
